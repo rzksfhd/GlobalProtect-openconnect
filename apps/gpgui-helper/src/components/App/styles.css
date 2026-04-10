@@ -15,7 +15,10 @@ body {
   font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
 }
 
-/* Smooth animations */
-* {
+/* Smooth animations - only for interactive elements */
+button,
+.MuiButton-root,
+.MuiLinearProgress-root,
+.MuiLinearProgress-bar {
   transition: background-color 0.2s ease, opacity 0.2s ease;
 }

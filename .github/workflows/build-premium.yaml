@@ -8,6 +8,9 @@ on:
       - v*
   workflow_dispatch:
 
+env:
+  UPSTREAM_REPO: yuezk/GlobalProtect-openconnect
+
 jobs:
   build-cli:
     runs-on: ubuntu-latest
@@ -38,11 +41,14 @@ jobs:
           cp target/release/gpservice dist/
           cp target/release/gpauth dist/
           tar -czvf gpconnect-premium-cli-x86_64.tar.gz -C dist .
+          sha256sum gpconnect-premium-cli-x86_64.tar.gz > gpconnect-premium-cli-x86_64.tar.gz.sha256
       
       - uses: actions/upload-artifact@v4
         with:
           name: gpconnect-cli-x86_64
-          path: gpconnect-premium-cli-x86_64.tar.gz
+          path: |
+            gpconnect-premium-cli-x86_64.tar.gz
+            gpconnect-premium-cli-x86_64.tar.gz.sha256
 
   build-gui-helper:
     runs-on: ubuntu-latest
@@ -83,17 +89,22 @@ jobs:
           mkdir -p dist
           cp target/release/gpgui-helper dist/
           tar -czvf gpconnect-premium-gui-helper-x86_64.tar.gz -C dist .
+          sha256sum gpconnect-premium-gui-helper-x86_64.tar.gz > gpconnect-premium-gui-helper-x86_64.tar.gz.sha256
       
       - uses: actions/upload-artifact@v4
         with:
           name: gpconnect-gui-helper-x86_64
-          path: gpconnect-premium-gui-helper-x86_64.tar.gz
+          path: |
+            gpconnect-premium-gui-helper-x86_64.tar.gz
+            gpconnect-premium-gui-helper-x86_64.tar.gz.sha256
 
   build-gpgui:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare workspace
-        run: rm -rf gpgui-build && mkdir -p gpgui-build
+        run: |
+          rm -rf gpgui-build
+          mkdir -p gpgui-build/artifacts
       
       - uses: actions/checkout@v4
         with:
@@ -101,45 +112,88 @@ jobs:
           fetch-depth: 0
           path: gpgui-build/gp
       
-      - name: Download gpgui source from original repo
+      - name: Download gpgui binary from upstream
+        id: download-upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Download gpgui binary from original release as template
-          gh -R yuezk/GlobalProtect-openconnect release download snapshot --pattern 'gpgui_x86_64.bin.tar.xz' --dir gpgui-build || true
+          cd gpgui-build
+          
+          # Try to download binary and checksum from upstream
+          if gh -R ${{ env.UPSTREAM_REPO }} release download snapshot \
+            --pattern 'gpgui_x86_64.bin.tar.xz' \
+            --pattern 'gpgui_x86_64.bin.tar.xz.sha256' \
+            --dir .; then
+            echo "::notice::Downloaded gpgui from upstream"
+            echo "downloaded=true" >> $GITHUB_OUTPUT
+          else
+            echo "::warning::Failed to download gpgui from upstream"
+            echo "downloaded=false" >> $GITHUB_OUTPUT
+          fi
       
-      - name: Build gpgui in Docker
+      - name: Verify checksum of downloaded binary
+        if: steps.download-upstream.outputs.downloaded == 'true'
         run: |
           cd gpgui-build
-          # Use original gpgui builder image (contains source)
+          
+          # Verify checksum
+          if [ -f gpgui_x86_64.bin.tar.xz.sha256 ]; then
+            echo "Verifying checksum..."
+            sha256sum -c gpgui_x86_64.bin.tar.xz.sha256 || {
+              echo "::error::Checksum verification failed!"
+              exit 1
+            }
+            echo "::notice::Checksum verified successfully"
+          else
+            echo "::warning::No checksum file found, skipping verification"
+          fi
+      
+      - name: Build gpgui in Docker (optional)
+        if: steps.download-upstream.outputs.downloaded != 'true'
+        continue-on-error: true
+        run: |
+          cd gpgui-build
+          
+          # Try to build using upstream docker image
           docker run --pull=always --rm \
             -e COREPACK_INTEGRITY_KEYS=0 \
             -v $(pwd):/workspace \
-            yuezk/gpdev:gpgui-builder-tauri2 || true
+            ${{ env.UPSTREAM_REPO }}/gpdev:gpgui-builder-tauri2
           
-          # If docker build fails, use downloaded binary
-          if [ ! -f *.bin.tar.xz ]; then
-            echo "Using pre-built gpgui binary"
-            # Rename downloaded binary
-            mv gpgui_x86_64.bin.tar.xz gpgui_premium_x86_64.bin.tar.xz 2>/dev/null || echo "Creating placeholder"
+          # Check if build succeeded
+          if [ -f gpgui_*.bin.tar.xz ]; then
+            echo "::notice::Docker build succeeded"
+          else
+            echo "::error::Both download and docker build failed"
+            exit 1
           fi
       
       - name: Package gpgui
         run: |
           cd gpgui-build
-          mkdir -p artifacts
-          cp *.bin.tar.xz artifacts/ 2>/dev/null || echo "No gpgui binary found"
           
-          # Create checksum
-          if [ -f artifacts/*.bin.tar.xz ]; then
-            cd artifacts && sha256sum *.bin.tar.xz > checksum.sha256
+          # Clean artifacts directory
+          rm -rf artifacts/*
+          
+          # Copy binary to artifacts
+          if [ -f gpgui_x86_64.bin.tar.xz ]; then
+            cp gpgui_x86_64.bin.tar.xz artifacts/
+            if [ -f gpgui_x86_64.bin.tar.xz.sha256 ]; then
+              cp gpgui_x86_64.bin.tar.xz.sha256 artifacts/
+            else
+              cd artifacts && sha256sum gpgui_x86_64.bin.tar.xz > gpgui_x86_64.bin.tar.xz.sha256
+            fi
+            echo "::notice::gpgui packaged successfully"
+          else
+            echo "::error::No gpgui binary found"
+            exit 1
           fi
       
       - uses: actions/upload-artifact@v4
         with:
           name: gpconnect-gpgui-x86_64
           path: gpgui-build/artifacts/*
-          if-no-files-found: warn
+          if-no-files-found: error
 
   release:
     needs: [build-cli, build-gui-helper, build-gpgui]
@@ -151,6 +205,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      
+      - name: List artifacts
+        run: |
+          echo "Artifacts to release:"
+          find artifacts -type f -name "*.tar.gz" -o -name "*.tar.xz" -o -name "*.sha256"
       
       - name: Create Release
         uses: softprops/action-gh-release@v1
