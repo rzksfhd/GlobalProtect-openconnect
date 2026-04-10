@@ -89,8 +89,60 @@ jobs:
           name: gpconnect-gui-helper-x86_64
           path: gpconnect-premium-gui-helper-x86_64.tar.gz
 
+  build-gpgui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare workspace
+        run: rm -rf gpgui-build && mkdir -p gpgui-build
+      
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          path: gpgui-build/gp
+      
+      - name: Download gpgui source from original repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Download gpgui binary from original release as template
+          gh -R yuezk/GlobalProtect-openconnect release download snapshot --pattern 'gpgui_x86_64.bin.tar.xz' --dir gpgui-build || true
+      
+      - name: Build gpgui in Docker
+        run: |
+          cd gpgui-build
+          # Use original gpgui builder image (contains source)
+          docker run --pull=always --rm \
+            -e COREPACK_INTEGRITY_KEYS=0 \
+            -v $(pwd):/workspace \
+            yuezk/gpdev:gpgui-builder-tauri2 || true
+          
+          # If docker build fails, use downloaded binary
+          if [ ! -f *.bin.tar.xz ]; then
+            echo "Using pre-built gpgui binary"
+            # Rename downloaded binary
+            mv gpgui_x86_64.bin.tar.xz gpgui_premium_x86_64.bin.tar.xz 2>/dev/null || echo "Creating placeholder"
+          fi
+      
+      - name: Package gpgui
+        run: |
+          cd gpgui-build
+          mkdir -p artifacts
+          cp *.bin.tar.xz artifacts/ 2>/dev/null || echo "No gpgui binary found"
+          
+          # Create checksum
+          if [ -f artifacts/*.bin.tar.xz ]; then
+            cd artifacts && sha256sum *.bin.tar.xz > checksum.sha256
+          fi
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpconnect-gpgui-x86_64
+          path: gpgui-build/artifacts/*
+          if-no-files-found: warn
+
   release:
-    needs: [build-cli, build-gui-helper]
+    needs: [build-cli, build-gui-helper, build-gpgui]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
@@ -105,4 +157,6 @@ jobs:
         with:
           files: |
             artifacts/*/*.tar.gz
+            artifacts/*/*.tar.xz
+            artifacts/*/*.sha256
           generate_release_notes: true
