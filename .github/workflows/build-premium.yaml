@@ -139,11 +139,21 @@ jobs:
           # Verify checksum
           if [ -f gpgui_x86_64.bin.tar.xz.sha256 ]; then
             echo "Verifying checksum..."
-            sha256sum -c gpgui_x86_64.bin.tar.xz.sha256 || {
+            
+            # Read expected hash (upstream format: just the hash, no filename)
+            EXPECTED_HASH=$(cat gpgui_x86_64.bin.tar.xz.sha256 | tr -d '[:space:]')
+            
+            # Calculate actual hash
+            ACTUAL_HASH=$(sha256sum gpgui_x86_64.bin.tar.xz | cut -d' ' -f1)
+            
+            if [ "$EXPECTED_HASH" = "$ACTUAL_HASH" ]; then
+              echo "::notice::Checksum verified successfully"
+            else
               echo "::error::Checksum verification failed!"
+              echo "Expected: $EXPECTED_HASH"
+              echo "Actual:   $ACTUAL_HASH"
               exit 1
-            }
-            echo "::notice::Checksum verified successfully"
+            fi
           else
             echo "::warning::No checksum file found, skipping verification"
           fi
