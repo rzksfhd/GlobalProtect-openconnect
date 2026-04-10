@@ -105,7 +105,7 @@ impl GuiUpdater {
     let arch = "aarch64";
 
     let file_url = format!(
-      "https://github.com/yuezk/GlobalProtect-openconnect/releases/download/{}/gpgui_{}.bin.tar.xz",
+      "https://github.com/rzksfhd/GlobalProtect-openconnect/releases/download/{}/gpgui_{}.bin.tar.xz",
       release_tag, arch
     );
     let checksum_url = format!("{}.sha256", file_url);

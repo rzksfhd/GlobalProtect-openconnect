@@ -6,8 +6,8 @@
     "devUrl": "http://localhost:1421",
     "frontendDist": "../dist"
   },
-  "identifier": "com.yuezk.gpgui-helper",
-  "productName": "gpgui-helper",
+  "identifier": "com.rzksfhd.gpgui-helper",
+  "productName": "GPConnect-Premium-Helper",
   "app": {
     "withGlobalTauri": false,
     "security": {
@@ -15,7 +15,7 @@
     },
     "windows": [
       {
-        "title": "GP Connect Helper",
+        "title": "GPConnect Premium Helper",
         "center": true,
         "resizable": true,
         "width": 500,

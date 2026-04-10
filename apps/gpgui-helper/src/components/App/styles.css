@@ -7,4 +7,15 @@ body,
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+}
+
+/* Premium branding */
+body {
+  font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Smooth animations */
+* {
+  transition: background-color 0.2s ease, opacity 0.2s ease;
 }

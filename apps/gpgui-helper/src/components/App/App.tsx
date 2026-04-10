@@ -76,7 +76,7 @@ function DownloadIndicator() {
   return (
     <>
       <Typography variant="h1" fontSize="1rem" data-tauri-drag-region>
-        Updating the GUI components...
+        Updating GPConnect Premium...
       </Typography>
       <Box mt={1}>
         <LinearProgressWithLabel value={progress} />
@@ -89,7 +89,7 @@ function DownloadFailed({ onRetry }: { onRetry: () => void }) {
   return (
     <>
       <Typography variant="h1" fontSize="1rem" data-tauri-drag-region>
-        Failed to update the GUI components.
+        Failed to update GPConnect Premium.
       </Typography>
       <Box mt={1} data-tauri-drag-region>
         <Button
