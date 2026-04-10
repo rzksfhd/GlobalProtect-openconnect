@@ -50,8 +50,8 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
         ref: ${{ github.ref }}
         path: source/gp
         submodules: recursive
@@ -75,7 +75,7 @@ jobs:
 
         make init-rpm \
           REVISION='1%{?dist}' \
-          RPM_SOURCE=https://github.com/yuezk/GlobalProtect-openconnect/releases/download/${RELEASE_TAG}/%{name}-%{version}.tar.gz
+          RPM_SOURCE=https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/%{name}-%{version}.tar.gz
 
         mv -v .build/rpm/*.spec ../artifacts/
 
@@ -193,8 +193,8 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
         ref: ${{ github.ref }}
         path: gpgui-source/gp
         submodules: recursive
@@ -249,8 +249,8 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: ${{ github.repository }}
         ref: ${{ github.ref }}
         path: gh-release/gp
         submodules: recursive
