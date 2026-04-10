@@ -81,7 +81,7 @@ jobs:
       - name: Package GUI Helper
         run: |
           mkdir -p dist
-          cp apps/gpgui-helper/src-tauri/target/release/gpgui-helper dist/
+          cp target/release/gpgui-helper dist/
           tar -czvf gpconnect-premium-gui-helper-x86_64.tar.gz -C dist .
       
       - uses: actions/upload-artifact@v4
